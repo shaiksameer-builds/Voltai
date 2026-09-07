@@ -13,6 +13,12 @@ export default function ClientSystemTabs({ systemId, historyData, forecastData }
   const [aiData, setAiData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // History state
+  const [historyRange, setHistoryRange] = useState('hourly');
+  const [historyDate, setHistoryDate] = useState('');
+  const [dynamicHistoryData, setDynamicHistoryData] = useState(historyData);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   useEffect(() => {
     fetch(`/api/recommendations?systemId=${systemId}`)
       .then(res => res.json())
@@ -21,6 +27,27 @@ export default function ClientSystemTabs({ systemId, historyData, forecastData }
         setLoading(false);
       });
   }, [systemId]);
+
+  useEffect(() => {
+    if (activeTab !== 2) return;
+    const fetchHistory = async () => {
+      setLoadingHistory(true);
+      try {
+        let url = `/api/systems/${systemId}/history?range=${historyRange}`;
+        if (historyRange === 'hourly' && historyDate) {
+          url += `&date=${historyDate}`;
+        }
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.error) setDynamicHistoryData(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+    fetchHistory();
+  }, [systemId, historyRange, historyDate, activeTab]);
 
   return (
     <div>
@@ -62,15 +89,41 @@ export default function ClientSystemTabs({ systemId, historyData, forecastData }
 
         {activeTab === 2 && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-white mb-4">Recent Historical Data</h3>
-            <SystemChart
-              data={historyData}
-              showConsumption={true}
-              showBattery={true}
-              showGrid={true}
-            />
-            {historyData.length === 0 && (
-              <p className="text-sm text-zinc-500 mt-2">No historical data found. Try importing a CSV.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h3 className="text-sm font-bold text-white">Historical Data</h3>
+              <div className="flex gap-2">
+                {historyRange === 'hourly' && (
+                  <input 
+                    type="date" 
+                    value={historyDate}
+                    onChange={(e) => setHistoryDate(e.target.value)}
+                    className="bg-zinc-900 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 text-zinc-300"
+                  />
+                )}
+                <select 
+                  value={historyRange} 
+                  onChange={(e) => setHistoryRange(e.target.value)}
+                  className="bg-zinc-900 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 text-zinc-300"
+                >
+                  <option value="hourly">Hourly</option>
+                  <option value="daily">Daily</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+            </div>
+            
+            {loadingHistory ? (
+              <div className="flex items-center justify-center h-64 text-zinc-500 gap-2 border border-zinc-800 rounded-xl bg-zinc-900/60">
+                <Loader2 className="h-5 w-5 animate-spin" /> Fetching history...
+              </div>
+            ) : (
+              <SystemChart
+                data={dynamicHistoryData}
+                showConsumption={true}
+                showBattery={true}
+                showGrid={true}
+              />
             )}
           </div>
         )}

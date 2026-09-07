@@ -7,8 +7,9 @@ import {
 import { AlertTriangle } from 'lucide-react';
 
 interface ForecastPoint {
-  hour: number;
+  hour?: number;
   timestamp?: string;
+  timestampKey?: string;
   estimatedKwh: number;
   isEstimated: boolean;
   consumptionKwh?: number;
@@ -30,7 +31,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-xs shadow-xl min-w-[160px]">
-      <p className="text-zinc-400 font-mono mb-2">{label}</p>
+      <p className="text-zinc-400 font-mono mb-2">{payload[0]?.payload?.fullDate || label}</p>
       {payload.map((entry: any) => (
         <div key={entry.dataKey} className="flex justify-between gap-4 mb-1">
           <span style={{ color: entry.color }}>{entry.name}</span>
@@ -55,14 +56,15 @@ export default function SystemChart({
     return (
       <div className="flex flex-col items-center justify-center h-64 bg-zinc-900/60 border border-zinc-800 rounded-xl gap-2">
         <AlertTriangle className="h-6 w-6 text-yellow-400" />
-        <p className="text-zinc-500 text-sm">No forecast data available</p>
+        <p className="text-zinc-500 text-sm">No data available for this timeline</p>
       </div>
     );
   }
 
   // Separate actual vs estimated for visual distinction
   const chartData = data.map(d => ({
-    time: d.timestamp || `${d.hour}:00`,
+    time: d.hour !== undefined ? `${d.hour}:00` : (d.timestampKey || d.timestamp || ''),
+    fullDate: d.timestamp,
     hour: d.hour,
     'Solar (Est.)': d.isEstimated && d.solarActualKwh == null
       ? Number(Math.max(0, d.estimatedKwh).toFixed(2))
