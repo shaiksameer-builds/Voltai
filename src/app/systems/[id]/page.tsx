@@ -41,6 +41,7 @@ export default async function SystemPage({ params }: { params: Promise<{ id: str
   // Map readings back to the format expected by the SystemChart
   const historyData = recentReadings.map(r => ({
     hour: r.timestamp.getUTCHours(), // For simple display
+    timestamp: r.timestamp.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }),
     estimatedKwh: r.solarKwh ?? 0,
     solarActualKwh: r.solarKwh ?? undefined,
     isEstimated: r.isEstimated,

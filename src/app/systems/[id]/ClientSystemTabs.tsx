@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react';
 import EnergyDashboard from '@/components/EnergyDashboard';
 import SystemChart from '@/components/SystemChart';
-import DataQualityPanel from '@/components/DataQualityPanel';
 import ApplianceScheduler from '@/components/ApplianceScheduler';
 import { Loader2 } from 'lucide-react';
 
-const TABS = ['AI Dashboard', 'Forecast Chart', 'History', 'Smart Schedule', 'Data Quality'];
+const TABS = ['AI Dashboard', 'Forecast Chart', 'History', 'Smart Schedule'];
 
 export default function ClientSystemTabs({ systemId, historyData, forecastData }: any) {
   const [activeTab, setActiveTab] = useState(0);
@@ -78,10 +77,6 @@ export default function ClientSystemTabs({ systemId, historyData, forecastData }
 
         {activeTab === 3 && (
           <ApplianceScheduler systemId={systemId} />
-        )}
-
-        {activeTab === 4 && (
-          <DataQualityPanel systemId={systemId} />
         )}
       </div>
     </div>

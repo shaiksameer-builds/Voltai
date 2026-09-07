@@ -8,6 +8,7 @@ import { AlertTriangle } from 'lucide-react';
 
 interface ForecastPoint {
   hour: number;
+  timestamp?: string;
   estimatedKwh: number;
   isEstimated: boolean;
   consumptionKwh?: number;
@@ -61,7 +62,7 @@ export default function SystemChart({
 
   // Separate actual vs estimated for visual distinction
   const chartData = data.map(d => ({
-    time: `${d.hour}:00`,
+    time: d.timestamp || `${d.hour}:00`,
     hour: d.hour,
     'Solar (Est.)': d.isEstimated && d.solarActualKwh == null
       ? Number(Math.max(0, d.estimatedKwh).toFixed(2))

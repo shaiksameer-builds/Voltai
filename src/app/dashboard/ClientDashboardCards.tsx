@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Zap, Sun, Battery, Loader2, Info } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, Zap, Sun, Battery, Loader2, Info, Trash2 } from 'lucide-react';
 import type { EnergyDecisionResult } from '@/lib/services/energyDecisionEngine';
 
 export default function ClientDashboardCards({ systems }: { systems: any[] }) {
+  const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [systemStates, setSystemStates] = useState<Record<string, EnergyDecisionResult | null | undefined>>({});
 
   useEffect(() => {
@@ -35,6 +38,26 @@ export default function ClientDashboardCards({ systems }: { systems: any[] }) {
     }
   };
 
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault(); // Prevent navigating to system page
+    if (!confirm('Are you sure you want to delete this property entirely? This cannot be undone.')) return;
+    
+    setIsDeleting(id);
+    try {
+      const res = await fetch(`/api/systems/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        alert('Failed to delete property');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting property');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {systems.map(system => {
@@ -49,7 +72,17 @@ export default function ClientDashboardCards({ systems }: { systems: any[] }) {
                 <div className="bg-yellow-400/10 border border-yellow-400/20 p-2.5 rounded-xl">
                   <Zap className="h-5 w-5 text-yellow-400 fill-yellow-400" />
                 </div>
-                <ArrowRight className="h-4 w-4 text-zinc-600 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all duration-200" />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => handleDelete(e, system.id)}
+                    disabled={isDeleting === system.id}
+                    className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                    title="Delete Property"
+                  >
+                    {isDeleting === system.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  </button>
+                  <ArrowRight className="h-4 w-4 text-zinc-600 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all duration-200" />
+                </div>
               </div>
 
               {/* Name */}
