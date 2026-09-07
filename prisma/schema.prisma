@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime      @default(now())
+  solarSystems SolarSystem[]
+}
+
+model SolarSystem {
+  id                 String               @id @default(cuid())
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id])
+  name               String
+  capacityKw         Float
+  latitude           Float
+  longitude          Float
+  electricityRate    Float                // ₹/kWh or $/kWh import price
+  exportRate         Float?               // ₹/kWh export/feed-in tariff
+  timezone           String               @default("UTC") // e.g. "Asia/Kolkata"
+  batteryCapacityKwh Float?               // total battery capacity in kWh
+  createdAt          DateTime             @default(now())
+  consumptionLogs    ConsumptionLog[]
+  forecasts          ProductionForecast[]
+  energyReadings     EnergyReading[]
+  importSessions     DataImportSession[]
+  propertyColumns    PropertyColumn[]
+  appliances         Appliance[]
+}
+
+// Legacy per-day consumption logs (kept for backward compatibility)
+model ConsumptionLog {
+  id            String      @id @default(cuid())
+  solarSystemId String
+  solarSystem   SolarSystem @relation(fields: [solarSystemId], references: [id])
+  date          DateTime
+  kwhConsumed   Float
+  createdAt     DateTime    @default(now())
+
+  @@unique([solarSystemId, date])
+}
+
+// Legacy hourly production forecast (kept for backward compatibility)
+model ProductionForecast {
+  id            String      @id @default(cuid())
+  solarSystemId String
+  solarSystem   SolarSystem @relation(fields: [solarSystemId], references: [id])
+  date          DateTime
+  hour          Int         // local hour 0-23 in property's timezone
+  estimatedKwh  Float
+  isEstimated   Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  @@unique([solarSystemId, date, hour])
+}
+
+// Normalized per-timestamp energy data (from CSV imports or live data)
+model EnergyReading {
+  id                  String             @id @default(cuid())
+  solarSystemId       String
+  solarSystem         SolarSystem        @relation(fields: [solarSystemId], references: [id])
+  timestamp           DateTime           // stored in UTC, display in property timezone
+  solarKwh            Float?             // solar generation (null if not available)
+  consumptionKwh      Float?             // house load
+  batterySocPercent   Float?             // battery state of charge 0-100
+  batteryChargeKwh    Float?             // energy charged into battery
+  batteryDischargeKwh Float?             // energy discharged from battery
+  gridImportKwh       Float?             // energy drawn from grid
+  gridExportKwh       Float?             // energy exported to grid
+  isEstimated         Boolean            @default(false)
+  dataSource          String             @default("csv") // "csv" | "api" | "estimated"
+  importSessionId     String?
+  importSession       DataImportSession? @relation(fields: [importSessionId], references: [id])
+  createdAt           DateTime           @default(now())
+
+  @@unique([solarSystemId, timestamp])
+  @@index([solarSystemId, timestamp])
+}
+
+// Tracks each CSV upload
+model DataImportSession {
+  id             String          @id @default(cuid())
+  solarSystemId  String
+  solarSystem    SolarSystem     @relation(fields: [solarSystemId], references: [id])
+  filename       String
+  columnMappings String          @default("{}") // JSON: { originalCol: normalizedField }
+  rowCount       Int             @default(0)
+  importedCount  Int             @default(0)
+  errorCount     Int             @default(0)
+  qualityScore   Float?          // 0-100
+  status         String          @default("pending") // pending | completed | failed
+  createdAt      DateTime        @default(now())
+  readings       EnergyReading[]
+
+  @@index([solarSystemId])
+}
+
+// Tracks which normalized columns a user has active
+model PropertyColumn {
+  id            String      @id @default(cuid())
+  solarSystemId String
+  solarSystem   SolarSystem @relation(fields: [solarSystemId], references: [id])
+  originalName  String      // column name from CSV
+  mappedTo      String      // normalized field name
+  unit          String?
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  @@unique([solarSystemId, mappedTo])
+  @@index([solarSystemId])
+}
+
+// User-defined appliances for smart scheduling
+model Appliance {
+  id              String      @id @default(cuid())
+  solarSystemId   String
+  solarSystem     SolarSystem @relation(fields: [solarSystemId], references: [id])
+  name            String
+  powerKw         Float       // rated power draw
+  durationMinutes Int         // how long it needs to run
+  isFlexible      Boolean     @default(true) // can it be rescheduled?
+  preferredStart  String?     // "HH:MM" e.g. "09:00"
+  preferredEnd    String?     // "HH:MM" e.g. "17:00"
+  createdAt       DateTime    @default(now())
+}
